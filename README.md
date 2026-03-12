@@ -167,8 +167,10 @@ Proyecto experimental desarrollado con fines de automatización y administració
 
 ## Autor
 
-Ernest Mondino
+Ernesto Mondino
+
 Administrador de sistemas Windows
+
 Banco de la Nación Argentina
 
 Proyecto en desarrollo.
