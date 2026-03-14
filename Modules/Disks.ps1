@@ -7,10 +7,8 @@ function Get-DiskReport {
         $Disks = Get-CimInstance Win32_LogicalDisk -ComputerName $ComputerName -Filter "DriveType=3"
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " DISCOS"
-        Write-Host "==========================================="
-
+        Write-Title " DISCOS"
+        
         foreach ($Disk in $Disks) {
             $SizeGB = [math]::Round($Disk.Size / 1GB, 2)
             $FreeGB = [math]::Round($Disk.FreeSpace / 1GB, 2)
@@ -24,7 +22,7 @@ function Get-DiskReport {
         Write-Host "==========================================="
     }
     catch {
-        Write-Host "Error obteniendo informacion de discos"
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error obteniendo informacion de discos"
+        Write-ErrorText $_.Exception.Message
     }
 }

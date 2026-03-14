@@ -5,7 +5,7 @@
     )
 
     try {
-        Write-Log "Analizando carpetas en ruta [$Path] sobre [$ComputerName]"
+        Write-Info "Analizando carpetas en ruta [$Path] sobre [$ComputerName]"
 
         $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             param($RemotePath)
@@ -28,7 +28,7 @@
         } -ArgumentList $Path -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "Top carpetas por tamaño"
+        Write-Title "Top carpetas por tamaño"
         Write-Host ""
 
         if (@($Results).Count -gt 0) {
@@ -39,13 +39,13 @@
     Format-Table -AutoSize
         }
         else {
-            Write-Host "No se encontraron subcarpetas para analizar."
+            Write-WarningText "No se encontraron subcarpetas para analizar."
         }
     }
     catch {
         Write-Log "Error analizando carpetas en [$Path] sobre [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error analizando carpetas."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error analizando carpetas."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -74,7 +74,7 @@ function Get-RemoteLargestFiles {
         } -ArgumentList $Path -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "Top archivos por tamaño"
+        Write-Title "Top archivos por tamaño"
         Write-Host ""
 
         if (@($Results).Count -gt 0) {
@@ -83,13 +83,13 @@ function Get-RemoteLargestFiles {
     Format-Table -AutoSize
         }
         else {
-            Write-Host "No se encontraron archivos."
+            Write-WarningText "No se encontraron archivos."
         }
     }
     catch {
         Write-Log "Error buscando archivos grandes en [$Path] sobre [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error buscando archivos."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error buscando archivos."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -101,15 +101,14 @@ function Analyze-RemoteFolderInteractive {
     $Path = Read-Host "Ingrese la ruta a analizar en el servidor"
 
     if ([string]::IsNullOrWhiteSpace($Path)) {
-        Write-Host "Ruta vacia."
+        Write-WarningText "Ruta vacia."
         return
     }
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " ANALISIS DE ALMACENAMIENTO"
-    Write-Host " Servidor: $ComputerName"
-    Write-Host " Ruta    : $Path"
+    Write-Title " ANALISIS DE ALMACENAMIENTO"
+    Write-Highlight " Servidor: $ComputerName"
+    Write-Highlight " Ruta    : $Path"
     Write-Host "==========================================="
 
     Get-RemoteFolderSizes -ComputerName $ComputerName -Path $Path
@@ -123,9 +122,8 @@ function Show-StorageMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO STORAGE"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO STORAGE"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Analizar ruta"
         Write-Host "2. Volver"
@@ -141,7 +139,7 @@ function Show-StorageMenu {
                 Write-Log "Salida del modulo Storage para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-WarningText "Opcion invalida"
                 Pause-Console
             }
         }

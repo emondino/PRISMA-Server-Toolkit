@@ -16,7 +16,7 @@
         return [bool]$Result
     }
     catch {
-        Write-Log "No se pudo verificar WebAdministration en [$ComputerName]. $($_.Exception.Message)" "ERROR"
+        Write-ErrorText "No se pudo verificar WebAdministration en [$ComputerName]. $($_.Exception.Message)" "ERROR"
         return $false
     }
 }
@@ -66,8 +66,8 @@ function Get-AppPoolsData {
     }
     catch {
         Write-Log "Error obteniendo App Pools en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error obteniendo App Pools."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error obteniendo App Pools."
+        Write-ErrorText $_.Exception.Message
         return @()
     }
 }
@@ -77,22 +77,20 @@ function Show-AllAppPools {
         [string]$ComputerName
     )
 
-    Write-Log "Listando App Pools en [$ComputerName]"
+    Write-Info "Listando App Pools en [$ComputerName]"
 
     $Pools = Get-AppPoolsData -ComputerName $ComputerName
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " APP POOLS - $ComputerName"
-    Write-Host "==========================================="
-
+    Write-Title " APP POOLS - $ComputerName"
+    
     if (@($Pools).Count -gt 0) {
         @($Pools) |
             Sort-Object AppPool |
             Format-Table -AutoSize
     }
     else {
-        Write-Host "No se encontraron App Pools o no fue posible consultarlos."
+        Write-WarningText "No se encontraron App Pools o no fue posible consultarlos."
     }
 }
 
@@ -104,7 +102,7 @@ function Find-AppPoolInteractive {
     $SearchText = Read-Host "Ingrese nombre del App Pool o parte del nombre"
 
     if ([string]::IsNullOrWhiteSpace($SearchText)) {
-        Write-Host "Busqueda vacia."
+        Write-WarningText "Busqueda vacia."
         return $null
     }
 
@@ -113,7 +111,7 @@ function Find-AppPoolInteractive {
         Sort-Object AppPool
 
     if (@($Pools).Count -eq 0) {
-        Write-Host "No se encontraron coincidencias."
+        Write-WarningText "No se encontraron coincidencias."
         return $null
     }
 
@@ -122,7 +120,7 @@ function Find-AppPoolInteractive {
     }
 
     Write-Host ""
-    Write-Host "Se encontraron varias coincidencias:"
+    Write-Title "Se encontraron varias coincidencias:"
     Write-Host ""
 
     $i = 1
@@ -141,7 +139,7 @@ function Find-AppPoolInteractive {
         }
     }
 
-    Write-Host "Seleccion invalida."
+    Write-WarningText "Seleccion invalida."
     return $null
 }
 
@@ -152,9 +150,7 @@ function Show-AppPoolSummary {
     )
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " DETALLE APP POOL"
-    Write-Host "==========================================="
+    Write-Title " DETALLE APP POOL"
     Write-Host "Servidor : $ComputerName"
     Write-Host "App Pool : $($AppPool.AppPool)"
     Write-Host "Estado   : $($AppPool.Estado)"
@@ -176,17 +172,17 @@ function Start-AppPoolSafe {
 
     if ($SelectedPool.Estado -eq "Started") {
         Write-Host ""
-        Write-Host "El App Pool ya se encuentra iniciado."
+        Write-Info "El App Pool ya se encuentra iniciado."
         return
     }
 
     if (-not (Confirm-Action -Message "Confirma iniciar el App Pool '$($SelectedPool.AppPool)'")) {
-        Write-Host "Accion cancelada."
+        Write-WarningText "Accion cancelada."
         return
     }
 
     try {
-        Write-Log "Iniciando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]"
+        Write-Success "Iniciando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]"
 
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             param($PoolName)
@@ -194,13 +190,13 @@ function Start-AppPoolSafe {
             Start-WebAppPool -Name $PoolName -ErrorAction Stop
         } -ArgumentList $SelectedPool.AppPool -ErrorAction Stop
 
-        Write-Host "App Pool iniciado correctamente."
+        Write-Success "App Pool iniciado correctamente."
         Write-Log "App Pool '$($SelectedPool.AppPool)' iniciado correctamente en [$ComputerName]"
     }
     catch {
         Write-Log "Error iniciando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error iniciando App Pool."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error iniciando App Pool."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -216,12 +212,12 @@ function Stop-AppPoolSafe {
 
     if ($SelectedPool.Estado -eq "Stopped") {
         Write-Host ""
-        Write-Host "El App Pool ya se encuentra detenido."
+        Write-Info "El App Pool ya se encuentra detenido."
         return
     }
 
     if (-not (Confirm-Action -Message "Confirma detener el App Pool '$($SelectedPool.AppPool)'")) {
-        Write-Host "Accion cancelada."
+        Write-WarningText "Accion cancelada."
         return
     }
 
@@ -234,13 +230,13 @@ function Stop-AppPoolSafe {
             Stop-WebAppPool -Name $PoolName -ErrorAction Stop
         } -ArgumentList $SelectedPool.AppPool -ErrorAction Stop
 
-        Write-Host "App Pool detenido correctamente."
+        Write-Success "App Pool detenido correctamente."
         Write-Log "App Pool '$($SelectedPool.AppPool)' detenido correctamente en [$ComputerName]"
     }
     catch {
         Write-Log "Error deteniendo App Pool '$($SelectedPool.AppPool)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error deteniendo App Pool."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error deteniendo App Pool."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -255,12 +251,12 @@ function Restart-AppPoolSafe {
     Show-AppPoolSummary -AppPool $SelectedPool -ComputerName $ComputerName
 
     if (-not (Confirm-Action -Message "Confirma reciclar el App Pool '$($SelectedPool.AppPool)'")) {
-        Write-Host "Accion cancelada."
+        Write-WarningText "Accion cancelada."
         return
     }
 
     try {
-        Write-Log "Reciclando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]"
+        Write-Info "Reciclando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]"
 
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             param($PoolName)
@@ -268,13 +264,13 @@ function Restart-AppPoolSafe {
             Restart-WebAppPool -Name $PoolName -ErrorAction Stop
         } -ArgumentList $SelectedPool.AppPool -ErrorAction Stop
 
-        Write-Host "App Pool reciclado correctamente."
+        Write-Success "App Pool reciclado correctamente."
         Write-Log "App Pool '$($SelectedPool.AppPool)' reciclado correctamente en [$ComputerName]"
     }
     catch {
         Write-Log "Error reciclando App Pool '$($SelectedPool.AppPool)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error reciclando App Pool."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error reciclando App Pool."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -322,9 +318,7 @@ function Get-IISSites {
         $Results = $Results | Select-Object Estado,Sitio,Puerto,AppPool,Ruta
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " SITIOS IIS - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " SITIOS IIS - $ComputerName"
         Write-Host ""
 
         $Results | Format-Table -AutoSize
@@ -333,7 +327,7 @@ function Get-IISSites {
     catch {
 
         Write-Log "Error listando sitios IIS en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando sitios IIS."
+        Write-ErrorText "Error consultando sitios IIS."
 
     }
 }
@@ -372,9 +366,7 @@ function Get-IISSiteDetail {
         } -ArgumentList $SiteName
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " DETALLE SITIO IIS"
-        Write-Host "==========================================="
+        Write-Title " DETALLE SITIO IIS"
         Write-Host ""
 
         $Result | Format-List
@@ -383,7 +375,7 @@ function Get-IISSiteDetail {
     catch {
 
         Write-Log "Error consultando sitio [$SiteName] en [$ComputerName]" "ERROR"
-        Write-Host $_.Exception.Message
+        Write-ErrorText $_.Exception.Message
 
     }
 }
@@ -408,13 +400,13 @@ function Start-IISSite {
 
         } -ArgumentList $SiteName
 
-        Write-Host "Sitio iniciado correctamente."
+        Write-Success "Sitio iniciado correctamente."
 
     }
     catch {
 
         Write-Log "Error iniciando sitio [$SiteName] en [$ComputerName]" "ERROR"
-        Write-Host $_.Exception.Message
+        Write-ErrorText $_.Exception.Message
 
     }
 }
@@ -439,13 +431,13 @@ function Stop-IISSite {
 
         } -ArgumentList $SiteName
 
-        Write-Host "Sitio detenido correctamente."
+        Write-Success "Sitio detenido correctamente."
 
     }
     catch {
 
         Write-Log "Error deteniendo sitio [$SiteName] en [$ComputerName]" "ERROR"
-        Write-Host $_.Exception.Message
+        Write-ErrorText $_.Exception.Message
 
     }
 }
@@ -473,7 +465,7 @@ function Get-IISHttpsBindings {
     )
 
     try {
-        Write-Log "Consultando bindings HTTPS y certificados IIS en [$ComputerName]"
+        Write-Info "Consultando bindings HTTPS y certificados IIS en [$ComputerName]"
 
         $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             Import-Module WebAdministration -ErrorAction Stop
@@ -527,9 +519,7 @@ function Get-IISHttpsBindings {
         $Results = @($Results) | Select-Object Sitio, Estado, Protocolo, Binding, Thumbprint, CertSubject, NotAfter, DiasRestantes
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " IIS SSL INSPECTOR - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " IIS SSL INSPECTOR - $ComputerName"
         Write-Host ""
 
         if (@($Results).Count -gt 0) {
@@ -556,13 +546,13 @@ function Get-IISHttpsBindings {
                 Format-Table -AutoSize
         }
         else {
-            Write-Host "No se encontraron bindings HTTPS en IIS."
+            Write-Info "No se encontraron bindings HTTPS en IIS."
         }
     }
     catch {
         Write-Log "Error consultando bindings HTTPS IIS en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando IIS SSL Inspector."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando IIS SSL Inspector."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -573,7 +563,7 @@ function Get-IISHttpsBindingsExpiringSoon {
     )
 
     try {
-        Write-Log "Consultando certificados IIS HTTPS que vencen en $Days dias en [$ComputerName]"
+        Write-Info "Consultando certificados IIS HTTPS que vencen en $Days dias en [$ComputerName]"
 
         $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             param($RemoteDays)
@@ -621,9 +611,8 @@ function Get-IISHttpsBindingsExpiringSoon {
         $Results = @($Results) | Select-Object Sitio, Estado, Binding, CertSubject, NotAfter, DiasRestantes, Thumbprint
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " IIS SSL - PROXIMOS A VENCER - $ComputerName"
-        Write-Host " Dentro de $Days dias"
+        Write-Title " IIS SSL - PROXIMOS A VENCER - $ComputerName"
+        Write-Highlight " Dentro de $Days dias"
         Write-Host "==========================================="
         Write-Host ""
 
@@ -648,13 +637,13 @@ function Get-IISHttpsBindingsExpiringSoon {
                 Format-Table -AutoSize
         }
         else {
-            Write-Host "No se encontraron certificados HTTPS de IIS proximos a vencer."
+            Write-Info "No se encontraron certificados HTTPS de IIS proximos a vencer."
         }
     }
     catch {
         Write-Log "Error consultando certificados HTTPS proximos a vencer en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando expiracion de certificados HTTPS IIS."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando expiracion de certificados HTTPS IIS."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -666,16 +655,15 @@ function Show-IISMenu {
 
     if (-not (Test-IISModuleAvailable -ComputerName $ComputerName)) {
         Write-Host ""
-        Write-Host "No se detecto el modulo WebAdministration o no fue posible consultarlo en el servidor."
+        Write-ErrorText "No se detecto el modulo WebAdministration o no fue posible consultarlo en el servidor."
         Pause-Console
         return
     }
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO IIS"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO IIS"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Listar App Pools"
         Write-Host "2. Consultar App Pool"
@@ -746,7 +734,7 @@ function Show-IISMenu {
                 Write-Log "Salida del modulo IIS para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }

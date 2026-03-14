@@ -6,7 +6,7 @@
 
     if (-not $Processes -or $Processes.Count -eq 0) {
         Write-Host ""
-        Write-Host "No hay datos para mostrar."
+        Write-WarningText "No hay datos para mostrar."
         return
     }
 
@@ -52,15 +52,13 @@ function Get-TopProcessesByMemory {
             Select-Object -First $Top
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " TOP $Top PROCESOS POR MEMORIA - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " TOP $Top PROCESOS POR MEMORIA - $ComputerName"
         Format-ProcessTable -Processes $Processes -Mode "Memory"
     }
     catch {
         Write-Log "Error listando procesos por memoria en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando procesos por memoria."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando procesos por memoria."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -78,17 +76,15 @@ function Get-TopProcessesByCPU {
             Select-Object -First $Top
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " TOP $Top PROCESOS POR CPU - $ComputerName"
-        Write-Host "==========================================="
-        Write-Host "Nota: CPU(seg) representa tiempo acumulado de CPU, no porcentaje instantaneo."
+        Write-Title " TOP $Top PROCESOS POR CPU - $ComputerName"
+        Write-Highlight "Nota: CPU(seg) representa tiempo acumulado de CPU, no porcentaje instantaneo."
         Write-Host ""
         Format-ProcessTable -Processes $Processes -Mode "CPU"
     }
     catch {
         Write-Log "Error listando procesos por CPU en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando procesos por CPU."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando procesos por CPU."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -100,7 +96,7 @@ function Find-ProcessByName {
     $SearchText = Read-Host "Ingrese nombre del proceso o parte del nombre"
 
     if ([string]::IsNullOrWhiteSpace($SearchText)) {
-        Write-Host "Busqueda vacia."
+        Write-WarningText "Busqueda vacia."
         return
     }
 
@@ -112,21 +108,19 @@ function Find-ProcessByName {
             Sort-Object ProcessName
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " BUSQUEDA DE PROCESOS - $ComputerName"
-        Write-Host "==========================================="
-
+        Write-Title " BUSQUEDA DE PROCESOS - $ComputerName"
+        
         if ($Processes -and $Processes.Count -gt 0) {
             Format-ProcessTable -Processes $Processes -Mode "Search"
         }
         else {
-            Write-Host "No se encontraron procesos que coincidan con la busqueda."
+            Write-WarningText "No se encontraron procesos que coincidan con la busqueda."
         }
     }
     catch {
         Write-Log "Error buscando procesos en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error buscando procesos."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error buscando procesos."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -157,37 +151,48 @@ function Get-ProcessesWithUser {
     try {
         Write-Log "Listando procesos con usuario en [$ComputerName]"
 
-        $WmiProcesses = Get-CimInstance Win32_Process -ComputerName $ComputerName -ErrorAction Stop
-        $PsProcesses  = Get-Process -ComputerName $ComputerName -ErrorAction SilentlyContinue
+        $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            $PsProcesses = Get-Process | Select-Object Id, ProcessName, WorkingSet64
+            $WmiProcesses = Get-WmiObject Win32_Process
 
-        $Results = foreach ($Proc in $WmiProcesses) {
-            $Owner = Get-ProcessOwnerSafe -WmiProcess $Proc
+            foreach ($Proc in $WmiProcesses) {
+                $Owner = "N/A"
 
-            $MatchingProcess = $PsProcesses | Where-Object { $_.Id -eq $Proc.ProcessId } | Select-Object -First 1
-            $MemoryMB = if ($MatchingProcess) { [math]::Round($MatchingProcess.WorkingSet64 / 1MB, 2) } else { 0 }
+                try {
+                    $OwnerInfo = $Proc.GetOwner()
+                    if ($OwnerInfo.ReturnValue -eq 0) {
+                        $Owner = "{0}\{1}" -f $OwnerInfo.Domain, $OwnerInfo.User
+                    }
+                }
+                catch {
+                    $Owner = "N/A"
+                }
 
-            [PSCustomObject]@{
-                Proceso   = $Proc.Name
-                Id        = $Proc.ProcessId
-                Usuario   = $Owner
-                MemoriaMB = $MemoryMB
+                $MatchingProcess = $PsProcesses | Where-Object { $_.Id -eq $Proc.ProcessId } | Select-Object -First 1
+                $MemoryMB = if ($MatchingProcess) { [math]::Round($MatchingProcess.WorkingSet64 / 1MB, 2) } else { 0 }
+                $ProcessName = if ($MatchingProcess) { $MatchingProcess.ProcessName } else { $Proc.Name }
+
+                [PSCustomObject]@{
+                    Proceso   = $ProcessName
+                    Id        = $Proc.ProcessId
+                    Usuario   = $Owner
+                    MemoriaMB = $MemoryMB
+                }
             }
-        }
+        } -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " PROCESOS CON USUARIO - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " PROCESOS CON USUARIO - $ComputerName"
 
-    $Results |
-    Sort-Object Usuario, Proceso |
-    Format-Table -AutoSize
-
+        @($Results) |
+            Select-Object Proceso, Id, Usuario, MemoriaMB |
+            Sort-Object Usuario, Proceso |
+            Format-Table -AutoSize
     }
     catch {
         Write-Log "Error listando procesos con usuario en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando procesos con usuario."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando procesos con usuario."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -198,9 +203,8 @@ function Show-ProcessesMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO PROCESOS"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO PROCESOS"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Top 10 procesos por memoria"
         Write-Host "2. Top 10 procesos por CPU"
@@ -231,7 +235,7 @@ function Show-ProcessesMenu {
                 Write-Log "Salida del modulo Procesos para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }

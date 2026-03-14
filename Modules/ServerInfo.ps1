@@ -16,9 +16,7 @@ function Get-ServerInfoReport {
         $UsedRAMGB  = [math]::Round($TotalRAMGB - $FreeRAMGB, 2)
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " INFORMACION DEL SERVIDOR"
-        Write-Host "==========================================="
+        Write-Title " INFORMACION DEL SERVIDOR"
         Write-Host "Servidor          : $ComputerName"
         Write-Host "Sistema Operativo : $($OS.Caption)"
         Write-Host "Version           : $($OS.Version)"
@@ -26,15 +24,36 @@ function Get-ServerInfoReport {
         Write-Host "Fabricante        : $($CS.Manufacturer)"
         Write-Host "Modelo            : $($CS.Model)"
         Write-Host "CPU               : $($CPU.Name)"
+         Write-Title "             RAM "
         Write-Host "RAM Total (GB)    : $TotalRAMGB"
         Write-Host "RAM Libre (GB)    : $FreeRAMGB"
         Write-Host "RAM Usada (GB)    : $UsedRAMGB"
+         Write-Title "             RED "
         Write-Host "Dominio           : $($CS.Domain)"
         Write-Host "IP                : $($NIC.IPAddress[0])"
-        Write-Host "==========================================="
+        
+
+        try {
+            $Sessions = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+                query session 2>$null
+            } -ErrorAction Stop
+
+            Write-Host ""
+            Write-Title " SESIONES DE USUARIO - $ComputerName"
+
+            if ($Sessions -and @($Sessions).Count -gt 0) {
+                $Sessions | ForEach-Object { Write-Host $_ }
+            }
+            else {
+                Write-WarningText "No se encontraron sesiones de usuario."
+            }
+        }
+        catch {
+            Write-WarningText "No fue posible obtener las sesiones de usuario."
+        }
     }
     catch {
-        Write-Host "Error obteniendo informacion del servidor"
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error obteniendo informacion del servidor"
+        Write-ErrorText $_.Exception.Message
     }
 }

@@ -21,8 +21,8 @@
     }
     catch {
         Write-Log "Error obteniendo servicios para Health Check en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error obteniendo servicios del servidor."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error obteniendo servicios del servidor."
+        Write-ErrorText $_.Exception.Message
         return
     }
 
@@ -67,12 +67,10 @@
         Sort-Object DisplayName
 
     Write-Host ""
+    Write-Title " HEALTH CHECK DE SERVICIOS"
+    Write-Highlight " Servidor objetivo: $ComputerName"
     Write-Host "==========================================="
-    Write-Host " HEALTH CHECK DE SERVICIOS"
-    Write-Host " Servidor objetivo: $ComputerName"
-    Write-Host "==========================================="
-    Write-Host ""
-    Write-Host "Servicios monitoreados:"
+    Write-Highlight "Servicios monitoreados:"
     Write-Host ""
 
     foreach ($Result in $Results) {
@@ -94,7 +92,7 @@
 
     Write-Host ""
     Write-Host "-------------------------------------------"
-    Write-Host "Servicios automaticos detenidos detectados:"
+    Write-Highlight "Servicios automaticos detenidos detectados:"
     if ($AutoStopped.Count -gt 0) {
         foreach ($Svc in $AutoStopped) {
             Write-Host ("- {0}" -f $Svc.DisplayName)
@@ -105,7 +103,7 @@
     }
 
     Write-Host "-------------------------------------------"
-    Write-Host "Resumen:"
+    Write-Highlight "Resumen:"
     Write-Host "OK     : $OkCount"
     Write-Host "ALERTA : $AlertCount"
     Write-Host "INFO   : $InfoCount"

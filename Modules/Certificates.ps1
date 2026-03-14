@@ -21,7 +21,7 @@ function Format-CertificateTable {
     )
 
     if (-not $Certificates -or @($Certificates).Count -eq 0) {
-        Write-Host "No se encontraron certificados."
+        Write-Info "No se encontraron certificados."
         return
     }
 
@@ -64,9 +64,8 @@ function Get-RemoteCertificates {
         $Results = @($Results) | Select-Object Subject, Issuer, NotBefore, NotAfter, Thumbprint, HasPrivateKey
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " CERTIFICADOS - $ComputerName"
-        Write-Host " Store: LocalMachine\My"
+        Write-Title " CERTIFICADOS - $ComputerName"
+        Write-Highlight " Store: LocalMachine\My"
         Write-Host "==========================================="
         Write-Host ""
 
@@ -80,8 +79,8 @@ else {
     }
     catch {
         Write-Log "Error listando certificados en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando certificados."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando certificados."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -93,7 +92,7 @@ function Find-RemoteCertificate {
     $SearchText = Read-Host "Ingrese texto a buscar (Subject, Issuer o Thumbprint)"
 
     if ([string]::IsNullOrWhiteSpace($SearchText)) {
-        Write-Host "Busqueda vacia."
+        Write-Info "Busqueda vacia."
         return
     }
 
@@ -122,9 +121,8 @@ function Find-RemoteCertificate {
         $Results = @($Results) | Select-Object Subject, Issuer, NotBefore, NotAfter, Thumbprint, HasPrivateKey
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " BUSQUEDA DE CERTIFICADOS - $ComputerName"
-        Write-Host " Texto: $SearchText"
+        Write-Titlet " BUSQUEDA DE CERTIFICADOS - $ComputerName"
+        Write-Highlight " Texto: $SearchText"
         Write-Host "==========================================="
         Write-Host ""
 
@@ -133,13 +131,13 @@ if (@($Results).Count -gt 0) {
     Format-CertificateTable -Certificates $Results
 }
 else {
-    Write-Host "No se encontraron certificados que coincidan con la busqueda."
+    Write-Info "No se encontraron certificados que coincidan con la busqueda."
 }
     }
     catch {
         Write-Log "Error buscando certificados en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error buscando certificados."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error buscando certificados."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -150,7 +148,7 @@ function Get-RemoteCertificatesExpiringSoon {
     )
 
     try {
-        Write-Log "Consultando certificados que vencen en $Days dias en [$ComputerName]"
+        Write-Info "Consultando certificados que vencen en $Days dias en [$ComputerName]"
 
         $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
             param($RemoteDays)
@@ -173,9 +171,8 @@ function Get-RemoteCertificatesExpiringSoon {
         $Results = @($Results) | Select-Object Subject, Issuer, NotAfter, DiasRestantes, Thumbprint
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " CERTIFICADOS PROXIMOS A VENCER - $ComputerName"
-        Write-Host " Dentro de $Days dias"
+        Write-Title " CERTIFICADOS PROXIMOS A VENCER - $ComputerName"
+        Write-Highlight " Dentro de $Days dias"
         Write-Host "==========================================="
         Write-Host ""
 
@@ -193,13 +190,13 @@ if (@($Results).Count -gt 0) {
         Format-Table -AutoSize
 }
 else {
-    Write-Host "No se encontraron certificados proximos a vencer."
+    Write-Info "No se encontraron certificados proximos a vencer."
 }
     }
     catch {
         Write-Log "Error consultando certificados proximos a vencer en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando certificados proximos a vencer."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando certificados proximos a vencer."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -210,9 +207,8 @@ function Show-CertificatesMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO CERTIFICADOS"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO CERTIFICADOS"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Listar certificados"
         Write-Host "2. Buscar certificado"

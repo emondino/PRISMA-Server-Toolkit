@@ -5,7 +5,7 @@
 
     if (-not $Events -or $Events.Count -eq 0) {
         Write-Host ""
-        Write-Host "No se encontraron eventos."
+        Write-Info "No se encontraron eventos."
         return
     }
 
@@ -44,17 +44,16 @@ function Get-RecentApplicationErrors {
         } -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " ERRORES APPLICATION - $ComputerName"
-        Write-Host " Ultimas $Hours horas"
+        Write-Title " ERRORES APPLICATION - $ComputerName"
+        Write-Highlight " Ultimas $Hours horas"
         Write-Host "==========================================="
 
         Format-EventTable -Events $Events
     }
     catch {
         Write-Log "Error consultando Application en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando eventos de Application."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando eventos de Application."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -76,17 +75,16 @@ function Get-RecentSystemErrors {
         } -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " ERRORES SYSTEM - $ComputerName"
-        Write-Host " Ultimas $Hours horas"
+        Write-Title " ERRORES SYSTEM - $ComputerName"
+        Write-Highlight " Ultimas $Hours horas"
         Write-Host "==========================================="
 
         Format-EventTable -Events $Events
     }
     catch {
         Write-Log "Error consultando System en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando eventos de System."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando eventos de System."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -97,7 +95,7 @@ function Get-RecentSecurityLogonFailures {
     )
 
     try {
-        Write-Log "Consultando Security 4625 ultimas $Hours hs en [$ComputerName]"
+        Write-Info "Consultando Security 4625 ultimas $Hours hs en [$ComputerName]"
 
         $StartTime = (Get-Date).AddHours(-$Hours)
 
@@ -150,22 +148,21 @@ function Get-RecentSecurityLogonFailures {
         )
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " FALLOS DE LOGON (4625) - $ComputerName"
-        Write-Host " Ultimas $Hours horas"
+        Write-Title " FALLOS DE LOGON (4625) - $ComputerName"
+        Write-Title " Ultimas $Hours horas"
         Write-Host "==========================================="
 
 if (@($Results).Count -gt 0) {
     @($Results) | Format-Table -AutoSize
 }
 else {
-    Write-Host "No se encontraron eventos 4625."
+    Write-Info "No se encontraron eventos 4625."
 }
     }
     catch {
         Write-Log "Error consultando Security 4625 en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error consultando eventos de Security (4625)."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error consultando eventos de Security (4625)."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -177,12 +174,12 @@ function Search-EventsByText {
     $SearchText = Read-Host "Ingrese texto a buscar en el mensaje del evento"
 
     if ([string]::IsNullOrWhiteSpace($SearchText)) {
-        Write-Host "Busqueda vacia."
+        Write-WarningText "Busqueda vacia."
         return
     }
 
     try {
-        Write-Log "Buscando eventos por texto [$SearchText] en [$ComputerName]"
+        Write-Info "Buscando eventos por texto [$SearchText] en [$ComputerName]"
 
         $StartTime = (Get-Date).AddHours(-24)
 
@@ -194,18 +191,17 @@ function Search-EventsByText {
         }
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " BUSQUEDA DE EVENTOS - $ComputerName"
-        Write-Host " Texto: $SearchText"
-        Write-Host " Ultimas 24 horas"
+        Write-Title " BUSQUEDA DE EVENTOS - $ComputerName"
+        Write-Highlight " Texto: $SearchText"
+        Write-Highlight " Ultimas 24 horas"
         Write-Host "==========================================="
 
         Format-EventTable -Events $Events
     }
     catch {
         Write-Log "Error buscando eventos por texto en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error buscando eventos."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error buscando eventos."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -216,9 +212,8 @@ function Show-EventsMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO EVENTOS"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO EVENTOS"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Errores de Application ultimas 24 hs"
         Write-Host "2. Errores de System ultimas 24 hs"
@@ -249,7 +244,7 @@ function Show-EventsMenu {
                 Write-Log "Salida del modulo Eventos para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }

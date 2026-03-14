@@ -15,8 +15,8 @@ function Get-ServiceMatches {
     }
     catch {
         Write-Log "Error buscando servicios en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error buscando servicios en el servidor."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error buscando servicios en el servidor."
+        Write-ErrorText $_.Exception.Message
         return @()
     }
 }
@@ -26,9 +26,11 @@ function Select-ServiceFromMatches {
         [array]$Matches
     )
 
-    if (-not $Matches -or $Matches.Count -eq 0) {
+    $Matches = @($Matches)
+
+    if ($Matches.Count -eq 0) {
         Write-Host ""
-        Write-Host "No se encontraron servicios que coincidan con la busqueda."
+        Write-WarningText "No se encontraron servicios que coincidan con la busqueda."
         return $null
     }
 
@@ -37,26 +39,28 @@ function Select-ServiceFromMatches {
     }
 
     Write-Host ""
-    Write-Host "Se encontraron varias coincidencias:"
+    Write-Highlight "Se encontraron varias coincidencias:"
     Write-Host ""
 
-    $i = 1
-    foreach ($Match in $Matches) {
-        Write-Host ("{0}. [{1}] {2} | Inicio: {3}" -f $i, $Match.State, $Match.DisplayName, $Match.StartMode)
-        $i++
+    $OptionsMap = @{}
+
+    for ($i = 0; $i -lt $Matches.Count; $i++) {
+        $Key = [string]($i + 1)
+        $Match = $Matches[$i]
+
+        $OptionsMap[$Key] = $Match
+
+        Write-Host ("{0}. [{1}] {2} | Inicio: {3}" -f $Key, $Match.State, $Match.DisplayName, $Match.StartMode)
     }
 
     Write-Host ""
-    $Selection = Read-Host "Seleccione un numero"
+    $Selection = (Read-Host "Seleccione un numero").Trim()
 
-    if ($Selection -match '^\d+$') {
-        $Index = [int]$Selection
-        if ($Index -ge 1 -and $Index -le $Matches.Count) {
-            return $Matches[$Index - 1]
-        }
+    if ($OptionsMap.ContainsKey($Selection)) {
+        return $OptionsMap[$Selection]
     }
 
-    Write-Host "Seleccion invalida."
+    Write-ErrorText "Seleccion invalida."
     return $null
 }
 
@@ -76,9 +80,7 @@ function Show-ServiceSummary {
     )
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " DETALLE DEL SERVICIO"
-    Write-Host "==========================================="
+    Write-Title " DETALLE DEL SERVICIO"
     Write-Host "Servidor : $ComputerName"
     Write-Host "Alias    : $($Service.DisplayName)"
     Write-Host "Estado   : $($Service.State)"
@@ -93,7 +95,7 @@ function Format-ServiceTable {
 
     if (-not $Services -or $Services.Count -eq 0) {
         Write-Host ""
-        Write-Host "No hay datos para mostrar."
+        Write-WarningText "No hay datos para mostrar."
         return
     }
 
@@ -161,12 +163,12 @@ function Find-ServiceInteractive {
     $SearchText = Read-Host "Ingrese alias del servicio o parte del nombre"
 
     if ([string]::IsNullOrWhiteSpace($SearchText)) {
-        Write-Host "Busqueda vacia."
+        Write-WarningText "Busqueda vacia."
         return $null
     }
 
-    $Matches = Get-ServiceMatches -ComputerName $ComputerName -SearchText $SearchText
-    $SelectedService = Select-ServiceFromMatches -Matches $Matches
+$Matches = @(Get-ServiceMatches -ComputerName $ComputerName -SearchText $SearchText)
+$SelectedService = Select-ServiceFromMatches -Matches $Matches
 
     return $SelectedService
 }
@@ -182,15 +184,13 @@ function Show-AllServices {
             Sort-Object DisplayName
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " TODOS LOS SERVICIOS - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " TODOS LOS SERVICIOS - $ComputerName"
         Format-ServiceTable -Services $Services
     }
     catch {
         Write-Log "Error listando todos los servicios en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando todos los servicios."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando todos los servicios."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -206,15 +206,13 @@ function Show-StoppedServices {
             Sort-Object DisplayName
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " SERVICIOS DETENIDOS - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " SERVICIOS DETENIDOS - $ComputerName"
         Format-ServiceTable -Services $Services
     }
     catch {
         Write-Log "Error listando servicios detenidos en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando servicios detenidos."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando servicios detenidos."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -230,15 +228,13 @@ function Show-AutoStoppedServices {
             Sort-Object DisplayName
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " SERVICIOS AUTOMATICOS DETENIDOS - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " SERVICIOS AUTOMATICOS DETENIDOS - $ComputerName"
         Format-ServiceTable -Services $Services
     }
     catch {
         Write-Log "Error listando servicios automaticos detenidos en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error listando servicios automaticos detenidos."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error listando servicios automaticos detenidos."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -254,32 +250,32 @@ function Start-ServiceSafe {
 
     if ($SelectedService.State -eq 'Running') {
         Write-Host ""
-        Write-Host "El servicio ya se encuentra en ejecucion."
+        Write-Info "El servicio ya se encuentra en ejecucion."
         return
     }
 
     if (-not (Confirm-Action -Message "Confirma iniciar el servicio '$($SelectedService.DisplayName)'")) {
-        Write-Host "Accion cancelada."
+        Write-WarningText "Accion cancelada."
         return
     }
 
     try {
-        Write-Log "Iniciando servicio [$($SelectedService.Name)] '$($SelectedService.DisplayName)' en [$ComputerName]"
+        Write-Info "Iniciando servicio [$($SelectedService.Name)] '$($SelectedService.DisplayName)' en [$ComputerName]"
         Start-Service -InputObject (Get-Service -ComputerName $ComputerName -Name $SelectedService.Name -ErrorAction Stop) -ErrorAction Stop
 
         if (Wait-ServiceStatus -ComputerName $ComputerName -ServiceName $SelectedService.Name -DesiredStatus 'Running') {
             Write-Log "Servicio '$($SelectedService.DisplayName)' iniciado correctamente en [$ComputerName]"
-            Write-Host "Servicio iniciado correctamente."
+            Write-Success "Servicio iniciado correctamente."
         }
         else {
             Write-Log "Timeout esperando inicio del servicio '$($SelectedService.DisplayName)' en [$ComputerName]" "WARN"
-            Write-Host "El servicio recibio la orden, pero no se confirmo su inicio dentro del tiempo esperado."
+            Write-WarningText "El servicio recibio la orden, pero no se confirmo su inicio dentro del tiempo esperado."
         }
     }
     catch {
         Write-Log "Error iniciando servicio '$($SelectedService.DisplayName)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error iniciando el servicio."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error iniciando el servicio."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -295,14 +291,14 @@ function Stop-ServiceSafe {
 
     if ($SelectedService.State -eq 'Stopped') {
         Write-Host ""
-        Write-Host "El servicio ya se encuentra detenido."
+        Write-Info "El servicio ya se encuentra detenido."
         return
     }
 
     $RunningDependents = Get-RunningDependentServices -ComputerName $ComputerName -ServiceName $SelectedService.Name
     if ($RunningDependents -and $RunningDependents.Count -gt 0) {
         Write-Host ""
-        Write-Host "No se puede detener el servicio porque existen servicios dependientes en ejecucion:"
+        Write-WarningText "No se puede detener el servicio porque existen servicios dependientes en ejecucion:"
         Write-Host ""
 
         foreach ($Dependent in $RunningDependents) {
@@ -310,13 +306,13 @@ function Stop-ServiceSafe {
         }
 
         Write-Host ""
-        Write-Host "Accion cancelada por seguridad."
+        Write-WarningText "Accion cancelada por seguridad."
         Write-Log "Cancelada detencion de servicio '$($SelectedService.DisplayName)' en [$ComputerName] por dependientes activos" "WARN"
         return
     }
 
     if (-not (Confirm-Action -Message "Confirma detener el servicio '$($SelectedService.DisplayName)'")) {
-        Write-Host "Accion cancelada."
+        Write-ErrorText "Accion cancelada."
         return
     }
 
@@ -326,17 +322,17 @@ function Stop-ServiceSafe {
 
         if (Wait-ServiceStatus -ComputerName $ComputerName -ServiceName $SelectedService.Name -DesiredStatus 'Stopped') {
             Write-Log "Servicio '$($SelectedService.DisplayName)' detenido correctamente en [$ComputerName]"
-            Write-Host "Servicio detenido correctamente."
+            Write-Success "Servicio detenido correctamente."
         }
         else {
             Write-Log "Timeout esperando detencion del servicio '$($SelectedService.DisplayName)' en [$ComputerName]" "WARN"
-            Write-Host "El servicio recibio la orden, pero no se confirmo su detencion dentro del tiempo esperado."
+            Write-WarningText "El servicio recibio la orden, pero no se confirmo su detencion dentro del tiempo esperado."
         }
     }
     catch {
         Write-Log "Error deteniendo servicio '$($SelectedService.DisplayName)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error deteniendo el servicio."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error deteniendo el servicio."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -353,7 +349,7 @@ function Restart-ServiceSafe {
     $RunningDependents = Get-RunningDependentServices -ComputerName $ComputerName -ServiceName $SelectedService.Name
     if ($RunningDependents -and $RunningDependents.Count -gt 0) {
         Write-Host ""
-        Write-Host "No se puede reiniciar el servicio porque existen servicios dependientes en ejecucion:"
+        Write-WarningText "No se puede reiniciar el servicio porque existen servicios dependientes en ejecucion:"
         Write-Host ""
 
         foreach ($Dependent in $RunningDependents) {
@@ -361,13 +357,13 @@ function Restart-ServiceSafe {
         }
 
         Write-Host ""
-        Write-Host "Accion cancelada por seguridad."
+        Write-WarningText "Accion cancelada por seguridad."
         Write-Log "Cancelado reinicio de servicio '$($SelectedService.DisplayName)' en [$ComputerName] por dependientes activos" "WARN"
         return
     }
 
     if (-not (Confirm-Action -Message "Confirma reiniciar el servicio '$($SelectedService.DisplayName)'")) {
-        Write-Host "Accion cancelada."
+        Write-WarningText "Accion cancelada."
         return
     }
 
@@ -378,7 +374,7 @@ function Restart-ServiceSafe {
 
             if (-not (Wait-ServiceStatus -ComputerName $ComputerName -ServiceName $SelectedService.Name -DesiredStatus 'Stopped')) {
                 Write-Log "Timeout esperando detencion previa al reinicio del servicio '$($SelectedService.DisplayName)' en [$ComputerName]" "WARN"
-                Write-Host "No se pudo confirmar la detencion del servicio antes del reinicio."
+                Write-WarningText "No se pudo confirmar la detencion del servicio antes del reinicio."
                 return
             }
         }
@@ -388,17 +384,17 @@ function Restart-ServiceSafe {
 
         if (Wait-ServiceStatus -ComputerName $ComputerName -ServiceName $SelectedService.Name -DesiredStatus 'Running') {
             Write-Log "Servicio '$($SelectedService.DisplayName)' reiniciado correctamente en [$ComputerName]"
-            Write-Host "Servicio reiniciado correctamente."
+            Write-Success "Servicio reiniciado correctamente."
         }
         else {
             Write-Log "Timeout esperando inicio posterior al reinicio del servicio '$($SelectedService.DisplayName)' en [$ComputerName]" "WARN"
-            Write-Host "No se pudo confirmar el inicio del servicio luego del reinicio."
+            Write-WarningText "No se pudo confirmar el inicio del servicio luego del reinicio."
         }
     }
     catch {
         Write-Log "Error reiniciando servicio '$($SelectedService.DisplayName)' en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error reiniciando el servicio."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error reiniciando el servicio."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -409,9 +405,8 @@ function Show-ServicesMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO SERVICIOS"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO SERVICIOS"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Consultar un servicio"
         Write-Host "2. Listar todos los servicios"
@@ -461,7 +456,7 @@ function Show-ServicesMenu {
                 Write-Log "Salida del modulo Servicios para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }

@@ -25,9 +25,8 @@ function Get-NetworkConfigReport {
             Where-Object { $_.IPEnabled -eq $true }
 
         Write-Host ""
-        Write-Host "==========================================="
-        Write-Host " CONFIGURACION DE RED - $ComputerName"
-        Write-Host "==========================================="
+        Write-Title " CONFIGURACION DE RED - $ComputerName"
+        
 
         foreach ($Cfg in $Configs) {
             Write-Host ""
@@ -43,8 +42,8 @@ function Get-NetworkConfigReport {
     }
     catch {
         Write-Log "Error obteniendo configuracion de red en [$ComputerName]. $($_.Exception.Message)" "ERROR"
-        Write-Host "Error obteniendo configuracion de red."
-        Write-Host $_.Exception.Message
+        Write-ErrorText "Error obteniendo configuracion de red."
+        Write-ErrorText $_.Exception.Message
     }
 }
 
@@ -54,19 +53,25 @@ function Get-ListeningPortsModern {
     )
 
     try {
-        $Connections = Get-NetTCPConnection -State Listen -CimSession $ComputerName -ErrorAction Stop
+        $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            $Processes = Get-Process | Select-Object Id, ProcessName
 
-        $Results = foreach ($Conn in $Connections) {
-            [PSCustomObject]@{
-                Protocolo = "TCP"
-                IPLocal   = $Conn.LocalAddress
-                Puerto    = $Conn.LocalPort
-                PID       = $Conn.OwningProcess
-                Proceso   = Get-ProcessNameByIdSafe -ProcessId $Conn.OwningProcess -ComputerName $ComputerName
+            $Listeners = Get-NetTCPConnection -State Listen -ErrorAction Stop
+
+            foreach ($Conn in $Listeners) {
+                $Proc = $Processes | Where-Object { $_.Id -eq $Conn.OwningProcess } | Select-Object -First 1
+
+                [PSCustomObject]@{
+                    Protocolo = "TCP"
+                    IPLocal   = $Conn.LocalAddress
+                    Puerto    = $Conn.LocalPort
+                    PID       = $Conn.OwningProcess
+                    Proceso   = if ($Proc) { $Proc.ProcessName } else { "N/A" }
+                }
             }
-        }
+        } -ErrorAction Stop
 
-        return $Results | Sort-Object Puerto, Proceso
+        return @($Results) | Select-Object Protocolo, IPLocal, Puerto, PID, Proceso | Sort-Object Puerto, Proceso
     }
     catch {
         return $null
@@ -79,39 +84,42 @@ function Get-ListeningPortsLegacy {
     )
 
     try {
-        $Output = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-            netstat -ano -p tcp | findstr /I "LISTENING"
-        } -ErrorAction Stop
+        $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            $Processes = Get-Process | Select-Object Id, ProcessName
+            $Output = netstat -ano -p tcp | findstr /I "LISTENING"
 
-        $Results = foreach ($Line in $Output) {
-            $CleanLine = ($Line -replace '\s+', ' ').Trim()
-            $Parts = $CleanLine.Split(' ')
+            foreach ($Line in $Output) {
+                $CleanLine = ($Line -replace '\s+', ' ').Trim()
+                $Parts = $CleanLine.Split(' ')
 
-            if ($Parts.Count -ge 5) {
-                $Proto = $Parts[0]
-                $LocalEndpoint = $Parts[1]
-                $State = $Parts[3]
-                $PID = $Parts[4]
+                if ($Parts.Count -ge 5) {
+                    $Proto = $Parts[0]
+                    $LocalEndpoint = $Parts[1]
+                    $State = $Parts[3]
+                    $PID = $Parts[4]
 
-                if ($State -eq "LISTENING") {
-                    $LastColon = $LocalEndpoint.LastIndexOf(":")
-                    if ($LastColon -gt 0) {
-                        $LocalIP = $LocalEndpoint.Substring(0, $LastColon)
-                        $LocalPort = $LocalEndpoint.Substring($LastColon + 1)
+                    if ($State -eq "LISTENING") {
+                        $LastColon = $LocalEndpoint.LastIndexOf(":")
+                        if ($LastColon -gt 0) {
+                            $LocalIP = $LocalEndpoint.Substring(0, $LastColon)
+                            $LocalPort = $LocalEndpoint.Substring($LastColon + 1)
 
-                        [PSCustomObject]@{
-                            Protocolo = $Proto
-                            IPLocal   = $LocalIP
-                            Puerto    = [int]$LocalPort
-                            PID       = [int]$PID
-                            Proceso   = Get-ProcessNameByIdSafe -ProcessId ([int]$PID) -ComputerName $ComputerName
+                            $Proc = $Processes | Where-Object { $_.Id -eq [int]$PID } | Select-Object -First 1
+
+                            [PSCustomObject]@{
+                                Protocolo = $Proto
+                                IPLocal   = $LocalIP
+                                Puerto    = [int]$LocalPort
+                                PID       = [int]$PID
+                                Proceso   = if ($Proc) { $Proc.ProcessName } else { "N/A" }
+                            }
                         }
                     }
                 }
             }
-        }
+        } -ErrorAction Stop
 
-        return $Results | Sort-Object Puerto, Proceso
+        return @($Results) | Select-Object Protocolo, IPLocal, Puerto, PID, Proceso | Sort-Object Puerto, Proceso
     }
     catch {
         Write-Log "Error obteniendo puertos en escucha con metodo legacy en [$ComputerName]. $($_.Exception.Message)" "ERROR"
@@ -128,21 +136,19 @@ function Get-ListeningPorts {
 
     $Ports = Get-ListeningPortsModern -ComputerName $ComputerName
 
-    if (-not $Ports) {
+    if (-not $Ports -or @($Ports).Count -eq 0) {
         Write-Log "Get-NetTCPConnection no disponible o fallo en [$ComputerName]. Se utilizara netstat -ano" "WARN"
         $Ports = Get-ListeningPortsLegacy -ComputerName $ComputerName
     }
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " PUERTOS EN ESCUCHA - $ComputerName"
-    Write-Host "==========================================="
+    Write-Title " PUERTOS EN ESCUCHA - $ComputerName"
 
-    if ($Ports -and $Ports.Count -gt 0) {
-        $Ports | Format-Table -AutoSize
+    if ($Ports -and @($Ports).Count -gt 0) {
+        @($Ports) | Format-Table -AutoSize
     }
     else {
-        Write-Host "No se encontraron puertos en escucha o no fue posible obtenerlos."
+        Write-WarningText "No se encontraron puertos en escucha o no fue posible obtenerlos."
     }
 }
 
@@ -154,7 +160,7 @@ function Find-PortByNumber {
     $PortNumber = Read-Host "Ingrese el numero de puerto"
 
     if ($PortNumber -notmatch '^\d+$') {
-        Write-Host "Puerto invalido."
+        Write-ErrorText "Puerto invalido."
         return
     }
 
@@ -167,18 +173,17 @@ function Find-PortByNumber {
         $Ports = Get-ListeningPortsLegacy -ComputerName $ComputerName
     }
 
-    $Matches = $Ports | Where-Object { $_.Puerto -eq [int]$PortNumber }
+    $Matches = @($Ports) | Where-Object { $_.Puerto -eq [int]$PortNumber }
 
     Write-Host ""
-    Write-Host "==========================================="
-    Write-Host " BUSQUEDA DE PUERTO - $ComputerName"
-    Write-Host "==========================================="
+    Write-Title " BUSQUEDA DE PUERTO - $ComputerName"
+    
 
-    if ($Matches -and $Matches.Count -gt 0) {
+    if (@($Matches).Count -gt 0) {
         $Matches | Format-Table -AutoSize
     }
     else {
-        Write-Host "No se encontraron procesos escuchando en el puerto $PortNumber."
+        Write-Success "No se encontraron procesos escuchando en el puerto $PortNumber."
     }
 }
 
@@ -189,9 +194,8 @@ function Show-NetworkMenu {
 
     do {
         Clear-Host
-        Write-Host "==========================================="
-        Write-Host " MODULO RED"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Title " MODULO RED"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
         Write-Host "1. Ver configuracion IP"
         Write-Host "2. Ver puertos en escucha"
@@ -217,7 +221,7 @@ function Show-NetworkMenu {
                 Write-Log "Salida del modulo Red para [$ComputerName]"
             }
             default {
-                Write-Host "Opcion invalida"
+                Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }

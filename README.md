@@ -10,9 +10,9 @@ El toolkit está diseñado para entornos de producción donde es necesario obten
 
 ## Versión
 
-**PRISMA Server Toolkit v0.3**
+**PRISMA Server Toolkit v0.5**
 
-Esta versión incluye módulos para diagnóstico del sistema, administración de servicios, inspección de IIS, análisis de eventos y revisión de almacenamiento.
+Esta versión incluye módulos para diagnóstico del sistema, administración de servicios, inspección de IIS, análisis de eventos, revisión de almacenamiento, análisis de logs IIS y un Health Check general del servidor.
 
 ---
 
@@ -33,6 +33,7 @@ Actualmente incluye los siguientes módulos:
 - CPU
 - Memoria
 - Información básica del host
+- Sesiones de usuario activas (`query session`)
 
 ### Discos
 - Espacio total
@@ -40,7 +41,17 @@ Actualmente incluye los siguientes módulos:
 - Estado de discos
 
 ### Health Check
-Chequeo rápido del estado de servicios críticos.
+Chequeo rápido del estado general del servidor:
+
+- Sistema operativo
+- CPU
+- Memoria libre
+- Uso de discos
+- Estado de IIS
+- Cantidad de sitios IIS
+- App Pools detenidos
+- Certificados próximos a vencer
+- Eventos recientes de Application / System / Security
 
 ### Procesos
 - Top procesos por CPU
@@ -95,6 +106,39 @@ Muestra:
 
 Esto permite detectar rápidamente certificados próximos a expirar.
 
+### IIS Log Analyzer
+
+PRISMA incluye un módulo avanzado de análisis de logs de IIS orientado a troubleshooting de aplicaciones web en producción.
+
+Este módulo permite cargar automáticamente el último log de un sitio IIS o analizar archivos de log manualmente.
+
+Funciones disponibles:
+
+- Top códigos HTTP
+- Top URLs más solicitadas
+- Top IPs cliente
+- Requests por hora
+- Requests por minuto
+- Top minutos con mayor tráfico
+- Detección de errores 5xx
+- Detección de errores 4xx
+- Top URLs que generan errores 5xx
+- Top IPs que generan errores 5xx
+- Top combinación IP + URL que genera errores 5xx
+
+Esto permite detectar rápidamente:
+
+- endpoints problemáticos
+- picos de tráfico
+- consumidores descontrolados
+- patrones de error en aplicaciones
+
+El análisis se realiza directamente sobre los logs estándar de IIS ubicados en:
+
+C:\inetpub\logs\LogFiles
+
+
+La herramienta interpreta automáticamente los campos del log y genera estadísticas útiles para diagnóstico de incidentes.
 ### Certificados
 
 Consulta de certificados del store:

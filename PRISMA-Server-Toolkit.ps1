@@ -26,7 +26,14 @@ function Write-Log {
     )
 
     $Line = "[{0}] [{1}] {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Level.ToUpper(), $Message
-    Write-Host $Line
+
+    switch ($Level.ToUpper()) {
+        "ERROR" { Write-Host $Line -ForegroundColor Red }
+        "WARN"  { Write-Host $Line -ForegroundColor Yellow }
+        "INFO"  { Write-Host $Line -ForegroundColor Gray }
+        default { Write-Host $Line -ForegroundColor Gray }
+    }
+
     $Line | Out-File -FilePath $Script:LogFile -Append -Encoding UTF8
 }
 
@@ -51,6 +58,7 @@ function Pause-Console {
 # CARGA DE MODULOS
 # =========================================
 $ModuleFiles = @(
+    "Colors.ps1"
     "Services.ps1",
     "ServerInfo.ps1",
     "Disks.ps1",
@@ -61,6 +69,9 @@ $ModuleFiles = @(
     "IIS.ps1"
     "Storage.ps1"
     "Certificates.ps1"
+    "IISLogs.ps1"
+    "HealthCheck.ps1"
+
 )
 
 foreach ($ModuleFile in $ModuleFiles) {
@@ -81,24 +92,24 @@ function Show-MainMenu {
 
     do {
         Clear-Host
+        Clear-Host
+        Write-Title "======== PRISMA SERVER TOOLKIT ========"
+        Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
-        Write-Host " PRISMA SERVER TOOLKIT"
-        Write-Host " Servidor objetivo: $ComputerName"
+        Write-Host " 1. Servicios"
+        Write-Host " 2. Informacion del servidor"
+        Write-Host " 3. Discos"
+        Write-Host " 4. Health Check de servicios"
+        Write-Host " 5. Procesos"
+        Write-Host " 6. Red"
+        Write-Host " 7. Eventos"
+        Write-Host " 8. IIS"
+        Write-Host " 9. Storage"
+        Write-Host "11. IIS Log Analyzer"
+        Write-Host "12. Health Check"
+        Write-Host "13. Salir"
         Write-Host "==========================================="
-        Write-Host "1. Servicios"
-        Write-Host "2. Informacion del servidor"
-        Write-Host "3. Discos"
-        Write-Host "4. Health Check de servicios"
-        Write-Host "5. Procesos"
-        Write-Host "6. Red"
-        Write-Host "7. Eventos"
-        Write-Host "8. IIS"
-        Write-Host "9. Storage"
-        Write-Host "10. Certificados"
-        Write-Host "11. Salir"
-        Write-Host "==========================================="
-        Write-Host "==  Desarrollado por Ernesto Mondino     =="
-        Write-Host "==========================================="
+        Write-Title "==  Desarrollado por Ernesto Mondino   =="
         Write-Host ""
         $Option = Read-Host "Seleccione una opcion"
 
@@ -196,14 +207,27 @@ switch ($Option) {
     }
 }
 "11" {
-    Write-Log "Salida de la herramienta"
-}
-    default {
-        Write-Host "Opcion invalida"
+    if (Get-Command Show-IISLogsMenu -ErrorAction SilentlyContinue) {
+        Show-IISLogsMenu -ComputerName $ComputerName
+    }
+    else {
+        Write-Log "La funcion Show-IISLogsMenu no esta disponible" "ERROR"
         Pause-Console
     }
 }
-    } while ($Option -ne "11")
+"12" {
+    Invoke-PRISMAHealthCheck -ComputerName $ComputerName
+    Pause-Console
+}
+"13" {
+    Write-Log "Salida de la herramienta"
+}
+    default {
+        Write-ErrorText "Opcion invalida"
+        Pause-Console
+    }
+}
+    } while ($Option -ne "13")
 }
 
 if ($Help) {
