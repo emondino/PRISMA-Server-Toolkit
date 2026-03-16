@@ -59,8 +59,8 @@ function Pause-Console {
 # =========================================
 $ModuleFiles = @(
     "Colors.ps1"
-    "Services.ps1",
     "ServerInfo.ps1",
+    "Services.ps1",
     "Disks.ps1",
     "ServiceHealth.ps1",
     "Processes.ps1",
@@ -96,8 +96,8 @@ function Show-MainMenu {
         Write-Title "======== PRISMA SERVER TOOLKIT ========"
         Write-Highlight " Servidor objetivo: $ComputerName"
         Write-Host "==========================================="
-        Write-Host " 1. Servicios"
-        Write-Host " 2. Informacion del servidor"
+        Write-Host " 1. Informacion del servidor"
+        Write-Host " 2. Servicios"
         Write-Host " 3. Discos"
         Write-Host " 4. Health Check de servicios"
         Write-Host " 5. Procesos"
@@ -116,15 +116,6 @@ function Show-MainMenu {
 
 switch ($Option) {
     "1" {
-        if (Get-Command Show-ServicesMenu -ErrorAction SilentlyContinue) {
-            Show-ServicesMenu -ComputerName $ComputerName
-        }
-        else {
-            Write-Log "La funcion Show-ServicesMenu no esta disponible" "ERROR"
-            Pause-Console
-        }
-    }
-    "2" {
         if (Get-Command Get-ServerInfoReport -ErrorAction SilentlyContinue) {
             Get-ServerInfoReport -ComputerName $ComputerName
         }
@@ -132,6 +123,15 @@ switch ($Option) {
             Write-Log "La funcion Get-ServerInfoReport no esta disponible" "ERROR"
         }
         Pause-Console
+    }
+    "2" {
+        if (Get-Command Show-ServicesMenu -ErrorAction SilentlyContinue) {
+            Show-ServicesMenu -ComputerName $ComputerName
+        }
+        else {
+            Write-Log "La funcion Show-ServicesMenu no esta disponible" "ERROR"
+            Pause-Console
+        }
     }
     "3" {
         if (Get-Command Get-DiskReport -ErrorAction SilentlyContinue) {

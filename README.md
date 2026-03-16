@@ -1,3 +1,7 @@
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue)
+![Platform](https://img.shields.io/badge/Platform-Windows%20Server-lightgrey)
+![Status](https://img.shields.io/badge/Status-Active-success)
+
 # PRISMA Server Toolkit
 
 **PRISMA** (Panel de Recolección Inteligente de Sistemas y Monitoreo Automatizado) es una herramienta de administración y diagnóstico de servidores Windows desarrollada en PowerShell.
@@ -167,6 +171,32 @@ Esto es útil para detectar:
 - consumo inesperado de disco
 
 ---
+
+## Use Cases
+
+PRISMA está pensado para administradores de sistemas que necesitan diagnosticar rápidamente servidores Windows en producción.
+
+Ejemplos de uso:
+
+- Detectar procesos que consumen memoria o CPU
+- Ver puertos abiertos y procesos asociados
+- Analizar logs de IIS para detectar errores en APIs
+- Detectar certificados próximos a vencer
+- Realizar un health check rápido del servidor
+
+---
+
+## Screenshots
+
+### Menu principal
+![Menu](docs/Menu.png)
+
+### Health Check
+![HealthCheck](docs/healthcheck.png)
+
+### IIS Log Analyzer
+![LogAnalyzer](docs/loganalyzer.png)
+
 
 ## Requisitos
 
