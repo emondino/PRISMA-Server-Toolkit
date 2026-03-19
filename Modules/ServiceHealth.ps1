@@ -4,9 +4,18 @@
     )
 
     $DefaultServiceChecks = @(
-        "Spooler",
         "w32time",
-        "wuauserv"
+        "wuauserv",
+        "RpcSs",
+        "EventLog",
+        "LanmanServer",
+        "LanmanWorkstation",
+        "Dnscache",
+        "MpsSvc",
+        "CryptSvc",
+        "W3SVC",
+        "WAS",
+        "IISADMIN"
     )
 
     $Results = @()
@@ -70,7 +79,7 @@
     Write-Title " HEALTH CHECK DE SERVICIOS"
     Write-Highlight " Servidor objetivo: $ComputerName"
     Write-Host "==========================================="
-    Write-Highlight "Servicios monitoreados:"
+    Write-Title "Servicios monitoreados:"
     Write-Host ""
 
     foreach ($Result in $Results) {
@@ -91,8 +100,8 @@
     }
 
     Write-Host ""
-    Write-Host "-------------------------------------------"
-    Write-Highlight "Servicios automaticos detenidos detectados:"
+   
+    Write-Title "Servicios automaticos detenidos detectados:"
     if ($AutoStopped.Count -gt 0) {
         foreach ($Svc in $AutoStopped) {
             Write-Host ("- {0}" -f $Svc.DisplayName)
@@ -102,13 +111,13 @@
         Write-Host "Ninguno."
     }
 
-    Write-Host "-------------------------------------------"
-    Write-Highlight "Resumen:"
+    
+    Write-Title "Resumen:"
     Write-Host "OK     : $OkCount"
     Write-Host "ALERTA : $AlertCount"
     Write-Host "INFO   : $InfoCount"
     Write-Host "Auto detenidos: $($AutoStopped.Count)"
-    Write-Host "==========================================="
+    Write-Host ""
 
     Write-Log "Health Check finalizado en [$ComputerName]. OK=$OkCount ALERTA=$AlertCount INFO=$InfoCount AutoDetenidos=$($AutoStopped.Count)"
 }

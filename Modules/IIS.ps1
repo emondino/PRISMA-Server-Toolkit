@@ -647,6 +647,89 @@ function Get-IISHttpsBindingsExpiringSoon {
     }
 }
 
+function Get-IISExpiredCertificatesInUse {
+    param(
+        [string]$ComputerName
+    )
+
+    try {
+        Write-Log "Consultando certificados vencidos usados por IIS en [$ComputerName]"
+
+        $Results = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            Import-Module WebAdministration -ErrorAction Stop
+
+            $Now = Get-Date
+            $Sites = Get-Website
+
+            foreach ($Site in $Sites) {
+                foreach ($Binding in $Site.Bindings.Collection) {
+                    if ($Binding.protocol -eq 'https') {
+                        $Thumbprint = $null
+
+                        try {
+                            $Thumbprint = $Binding.CertificateHash
+
+                            if ($Thumbprint -is [byte[]]) {
+                                $Thumbprint = ($Thumbprint | ForEach-Object { $_.ToString("X2") }) -join ""
+                            }
+
+                            if (-not [string]::IsNullOrWhiteSpace($Thumbprint)) {
+                                $Cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object {
+                                    $_.Thumbprint -eq $Thumbprint
+                                } | Select-Object -First 1
+
+                                if ($Cert -and $Cert.NotAfter -lt $Now) {
+                                    [PSCustomObject]@{
+                                        Sitio         = $Site.Name
+                                        Estado        = $Site.State
+                                        Binding       = $Binding.bindingInformation
+                                        Subject       = $Cert.Subject
+                                        NotAfter      = $Cert.NotAfter
+                                        DiasVencido   = [int](New-TimeSpan -Start $Cert.NotAfter -End $Now).TotalDays
+                                        Thumbprint    = $Cert.Thumbprint
+                                    }
+                                }
+                            }
+                        }
+                        catch {
+                        }
+                    }
+                }
+            }
+        } -ErrorAction Stop
+
+        $Results = @($Results)
+
+        Write-Host ""
+        Write-Title " CERTIFICADOS VENCIDOS USADOS POR IIS - $ComputerName"
+        Write-Highlight " Bindings HTTPS con certificado vencido"
+        Write-Host ""
+
+        if ($Results.Count -gt 0) {
+            $Results |
+                Sort-Object DiasVencido -Descending |
+                Select-Object `
+                    Sitio,
+                    Estado,
+                    Binding,
+                    @{Name='CN'; Expression = { Get-CertificateCN $_.Subject }},
+                    @{Name='Vence'; Expression = { $_.NotAfter.ToString("yyyy-MM-dd") }},
+                    DiasVencido,
+                    @{Name='Thumbprint'; Expression = {
+                        if ($_.Thumbprint.Length -gt 16) { $_.Thumbprint.Substring(0,16) + "..." } else { $_.Thumbprint }
+                    }} |
+                Format-Table -AutoSize
+        }
+        else {
+            Write-Success "No se detectaron certificados vencidos en uso por IIS."
+        }
+    }
+    catch {
+        Write-Log "Error consultando certificados vencidos usados por IIS en [$ComputerName]. $($_.Exception.Message)" "ERROR"
+        Write-ErrorText "Error consultando certificados vencidos usados por IIS."
+        Write-ErrorText $_.Exception.Message
+    }
+}
 
 function Show-IISMenu {
     param(
@@ -676,7 +759,8 @@ function Show-IISMenu {
         Write-Host "9. Detener sitio"
         Write-Host "10. IIS SSL Inspector"
         Write-Host "11. IIS SSL proximos a vencer"
-        Write-Host "12. Volver"
+        Write-Host "12. Certificados Vencidos usados por IIS"
+        Write-Host "13. Volver"
 
 
         Write-Host "==========================================="
@@ -730,13 +814,17 @@ function Show-IISMenu {
                 Get-IISHttpsBindingsExpiringSoon -ComputerName $ComputerName -Days 30
                 Pause-Console
             }
-            "12" {
-                Write-Log "Salida del modulo IIS para [$ComputerName]"
-            }
+"12" {
+    Get-IISExpiredCertificatesInUse -ComputerName $ComputerName
+    Pause-Console
+}
+"13" {
+    Write-Log "Salida del modulo IIS para [$ComputerName]"
+}
             default {
                 Write-ErrorText "Opcion invalida"
                 Pause-Console
             }
         }
-    } while ($Option -ne "12")
+    } while ($Option -ne "13")
 }

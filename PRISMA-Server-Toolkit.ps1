@@ -71,6 +71,7 @@ $ModuleFiles = @(
     "Certificates.ps1"
     "IISLogs.ps1"
     "HealthCheck.ps1"
+    "Findings.ps1"
 
 )
 
@@ -84,6 +85,8 @@ foreach ($ModuleFile in $ModuleFiles) {
         Write-Log "No se encontro el modulo: $ModuleFile" "WARN"
     }
 }
+
+
 
 function Show-MainMenu {
     param(
@@ -105,9 +108,11 @@ function Show-MainMenu {
         Write-Host " 7. Eventos"
         Write-Host " 8. IIS"
         Write-Host " 9. Storage"
+        Write-Host "10. Certificados"
         Write-Host "11. IIS Log Analyzer"
         Write-Host "12. Health Check"
-        Write-Host "13. Salir"
+        Write-Host "13  Hallazgos Automaticos"
+        Write-Host "14. Salir"
         Write-Host "==========================================="
         Write-Title "==  Desarrollado por Ernesto Mondino   =="
         Write-Host ""
@@ -219,7 +224,17 @@ switch ($Option) {
     Invoke-PRISMAHealthCheck -ComputerName $ComputerName
     Pause-Console
 }
+
 "13" {
+    if (Get-Command Show-FindingsSummary -ErrorAction SilentlyContinue) {
+        Show-FindingsSummary -ComputerName $ComputerName
+    }
+    else {
+        Write-Log "La funcion Show-FindingsSummary no esta disponible" "ERROR"
+    }
+    Pause-Console
+}
+"14" {
     Write-Log "Salida de la herramienta"
 }
     default {
@@ -227,7 +242,7 @@ switch ($Option) {
         Pause-Console
     }
 }
-    } while ($Option -ne "13")
+    } while ($Option -ne "14")
 }
 
 if ($Help) {

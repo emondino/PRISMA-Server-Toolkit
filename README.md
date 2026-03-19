@@ -14,7 +14,7 @@ El toolkit está diseñado para entornos de producción donde es necesario obten
 
 ## Versión
 
-**PRISMA Server Toolkit v0.5**
+**PRISMA Server Toolkit v1.0**
 
 Esta versión incluye módulos para diagnóstico del sistema, administración de servicios, inspección de IIS, análisis de eventos, revisión de almacenamiento, análisis de logs IIS y un Health Check general del servidor.
 
@@ -155,6 +155,7 @@ Funciones disponibles:
 - Listar certificados
 - Buscar certificados por texto
 - Detectar certificados próximos a vencer
+- Certificados Vencidos usados por IIS
 
 ### Storage
 
@@ -162,6 +163,8 @@ Análisis de uso de almacenamiento:
 
 - Top carpetas por tamaño
 - Top archivos por tamaño
+- Analizar raiz de disco
+- Analizar ruta manual
 
 Esto es útil para detectar:
 
@@ -169,6 +172,14 @@ Esto es útil para detectar:
 - dumps
 - archivos temporales
 - consumo inesperado de disco
+
+### Hallazgos Automaticos
+
+PRISMA analiza automáticamente:
+
+- Uso de discos (alertas por porcentaje)
+- Eventos críticos de IIS / AppPools
+- Certificados vencidos con reemplazo
 
 ---
 
@@ -189,13 +200,13 @@ Ejemplos de uso:
 ## Screenshots
 
 ### Menu principal
-![Menu](docs/Menu.png)
+![Menu](Docs/Menu.png)
 
 ### Health Check
-![HealthCheck](docs/healthcheck.png)
+![HealthCheck](Docs/healthcheck.png)
 
 ### IIS Log Analyzer
-![LogAnalyzer](docs/loganalyzer.png)
+![LogAnalyzer](Docs/loganalyzer.png)
 
 
 ## Requisitos
